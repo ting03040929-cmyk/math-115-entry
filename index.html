@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>115數學學習入口</title>
+    <meta
+      name="description"
+      content="選擇數學組別與日期，進入今天的教材或回家作業。"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="header-inner">
+        <p class="eyebrow">115學年度數學</p>
+        <h1>數學學習入口</h1>
+        <p class="subtitle">先選擇組別，再選擇日期。</p>
+      </div>
+    </header>
+
+    <main class="page-shell">
+      <section class="status-card" id="loading-card" aria-live="polite">
+        <span class="loading-dot" aria-hidden="true"></span>
+        正在讀取教材清單……
+      </section>
+
+      <section class="panel" id="group-panel" hidden>
+        <div class="step-heading">
+          <span class="step-number">1</span>
+          <div>
+            <p class="step-label">第 1 步</p>
+            <h2>請選擇你的組別</h2>
+          </div>
+        </div>
+        <div class="group-grid" role="group" aria-label="選擇組別">
+          <button class="group-card group-a" type="button" data-group="A組">
+            <span class="group-letter" aria-hidden="true">A</span>
+            <span class="group-name">A 組</span>
+            <span class="group-hint">點這裡</span>
+          </button>
+          <button class="group-card group-b" type="button" data-group="B組">
+            <span class="group-letter" aria-hidden="true">B</span>
+            <span class="group-name">B 組</span>
+            <span class="group-hint">點這裡</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="panel" id="date-panel" hidden>
+        <div class="date-heading">
+          <button class="back-button" id="back-button" type="button">
+            ← 回到組別
+          </button>
+          <div class="step-heading compact">
+            <span class="step-number">2</span>
+            <div>
+              <p class="step-label">第 2 步</p>
+              <h2 id="selected-group-title">選擇日期</h2>
+            </div>
+          </div>
+        </div>
+        <p class="instruction" id="date-instruction">請點選要進入的日期。</p>
+        <div class="date-list" id="date-list" aria-live="polite"></div>
+      </section>
+
+      <section class="status-card error-card" id="error-card" hidden role="alert">
+        <h2>目前無法讀取教材清單</h2>
+        <p>請先確認網路連線，或請老師協助。</p>
+      </section>
+
+      <noscript>
+        <section class="status-card error-card">
+          這個入口需要開啟瀏覽器的 JavaScript 才能使用。
+        </section>
+      </noscript>
+    </main>
+
+    <footer class="site-footer">
+      <p>請先選組別，再選日期。</p>
+    </footer>
+  </body>
+</html>
