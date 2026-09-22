@@ -1,9 +1,9 @@
 const CONFIG = {
-  spreadsheetId: "1y3HZnrCFnfyy_IkC8FoMra7GWZSPkWMYId2r-3uFu2s",
-  sheetName: "入口清單",
+  publishedCsvUrl:
+    "https://docs.google.com/spreadsheets/d/e/2PACX-1vRRVj_DoyTqLY_oMFVteRifkzANvSGHK-nULlYy9yqksytoDEE-qmbSC0TcFDNtgKUpgMr38A681VUx/pub?gid=676947176&single=true&output=csv",
 };
 
-const DATA_URL = `https://docs.google.com/spreadsheets/d/${CONFIG.spreadsheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(CONFIG.sheetName)}`;
+const DATA_URL = CONFIG.publishedCsvUrl;
 
 const state = {
   rows: [],
@@ -51,37 +51,64 @@ async function init() {
 async function loadRows() {
   const response = await fetch(DATA_URL, { cache: "no-store" });
   if (!response.ok) {
-    throw new Error(`教材清單讀取失敗：${response.status}`);
+    throw new Error("教材清單讀取失敗：" + response.status);
   }
 
   const text = await response.text();
-  const payload = parseGoogleVisualizationResponse(text);
-  const rows = payload?.table?.rows ?? [];
+  const rows = parseCsv(text);
 
   return rows
-    .map((row) => normalizeRow(row))
+    .slice(1)
+    .map((cells) => normalizeRow(cells))
     .filter((row) => row.group && row.date && row.title && row.url && row.visible === "是")
     .filter((row) => isSafeWebUrl(row.url))
     .sort((a, b) => b.sortKey - a.sortKey);
 }
 
-function parseGoogleVisualizationResponse(text) {
-  const prefix = "google.visualization.Query.setResponse(";
-  const start = text.indexOf(prefix);
-  if (start === -1) {
-    throw new Error("Google 試算表回傳格式不正確。");
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+
+    if (char === '"') {
+      if (inQuotes && text[index + 1] === '"') {
+        field += '"';
+        index += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === "," && !inQuotes) {
+      row.push(field);
+      field = "";
+    } else if ((char === String.fromCharCode(10) || char === String.fromCharCode(13)) && !inQuotes) {
+      if (char === String.fromCharCode(13) && text.charCodeAt(index + 1) === 10) {
+        index += 1;
+      }
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = "";
+    } else {
+      field += char;
+    }
   }
 
-  const jsonText = text.slice(start + prefix.length).replace(/\);?\s*$/, "");
-  return JSON.parse(jsonText);
+  if (field !== "" || row.length) {
+    row.push(field);
+    rows.push(row);
+  }
+
+  return rows;
 }
 
-function normalizeRow(row) {
-  const cells = row.c ?? [];
+function normalizeRow(cells) {
   const group = cellText(cells[0]);
-  const dateCell = cells[1] ?? {};
-  const date = cellText(dateCell);
-  const dateInfo = parseDate(dateCell.v, dateCell.f || date);
+  const date = cellText(cells[1]);
+  const dateInfo = parseDate(date, date);
 
   return {
     group,
@@ -94,27 +121,15 @@ function normalizeRow(row) {
   };
 }
 
-function cellText(cell) {
-  if (!cell) return "";
-  return String(cell.f ?? cell.v ?? "").trim();
+function cellText(value) {
+  return String(value ?? "").trim();
 }
 
 function parseDate(value, formattedValue) {
-  const gvizDate = typeof value === "string" && value.match(/^Date\((\d+),(\d+),(\d+)\)$/);
-  if (gvizDate) {
-    const year = Number(gvizDate[1]);
-    const month = Number(gvizDate[2]);
-    const day = Number(gvizDate[3]);
-    return {
-      label: `${month + 1}月${day}日`,
-      sortKey: Date.UTC(year, month, day),
-    };
-  }
-
   const parsed = new Date(value || formattedValue);
   if (!Number.isNaN(parsed.getTime())) {
     return {
-      label: `${parsed.getMonth() + 1}月${parsed.getDate()}日`,
+      label: (parsed.getMonth() + 1) + "月" + parsed.getDate() + "日",
       sortKey: parsed.getTime(),
     };
   }
@@ -138,7 +153,7 @@ function renderDatePanel() {
   const groupRows = state.rows.filter((row) => row.group === state.selectedGroup);
   elements.groupPanel.hidden = true;
   elements.datePanel.hidden = false;
-  elements.selectedGroupTitle.textContent = `${state.selectedGroup}：請選擇日期`;
+  elements.selectedGroupTitle.textContent = state.selectedGroup + "：請選擇日期";
   elements.dateInstruction.textContent = groupRows.length
     ? "請點選要進入的日期。"
     : "目前還沒有這一組的教材或作業。";
