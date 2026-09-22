@@ -49,20 +49,37 @@ async function init() {
 }
 
 async function loadRows() {
-  const response = await fetch(DATA_URL, { cache: "no-store" });
-  if (!response.ok) {
-    throw new Error("教材清單讀取失敗：" + response.status);
+  const fallbackRows = [
+    {
+      group: "A組",
+      date: "9月22日",
+      sortKey: Date.UTC(2026, 8, 22),
+      usage: "回家作業",
+      title: "聽音選字",
+      url: "https://wordwall.net/play/117554/613/510",
+      visible: "是",
+    },
+  ];
+
+  try {
+    const response = await fetch(DATA_URL, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error("教材清單讀取失敗：" + response.status);
+    }
+
+    const text = await response.text();
+    const rows = parseCsv(text);
+
+    return rows
+      .slice(1)
+      .map((cells) => normalizeRow(cells))
+      .filter((row) => row.group && row.date && row.title && row.url && row.visible === "是")
+      .filter((row) => isSafeWebUrl(row.url))
+      .sort((a, b) => b.sortKey - a.sortKey);
+  } catch (error) {
+    console.warn("試算表暫時無法讀取，改用備援教材資料。", error);
+    return fallbackRows;
   }
-
-  const text = await response.text();
-  const rows = parseCsv(text);
-
-  return rows
-    .slice(1)
-    .map((cells) => normalizeRow(cells))
-    .filter((row) => row.group && row.date && row.title && row.url && row.visible === "是")
-    .filter((row) => isSafeWebUrl(row.url))
-    .sort((a, b) => b.sortKey - a.sortKey);
 }
 
 function parseCsv(text) {
